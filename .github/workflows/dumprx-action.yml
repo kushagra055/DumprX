@@ -5,6 +5,10 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      firmware_url:
+        description: 'URL of the firmware'
+        required: true
 
 jobs:
   run-dumprx:
@@ -28,13 +32,14 @@ jobs:
     - name: Run DumprX
       run: |
         chmod +x dumper.sh
-        ./dumper.sh 'YOUR_FIRMWARE_URL_OR_PATH'
+        ./dumper.sh '${{ github.event.inputs.firmware_url }}'
       env:
         GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
     - name: Create output repo
       run: |
         OUTPUT_REPO_NAME="dumprx-output-$(date +%Y%m%d%H%M%S)"
+        echo "Creating repository $OUTPUT_REPO_NAME"
         curl -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
              -d '{"name":"'$OUTPUT_REPO_NAME'"}' \
              https://api.github.com/user/repos
@@ -45,3 +50,10 @@ jobs:
         git add .
         git commit -m "Add DumprX output"
         git push -u origin main
+
+    - name: Upload logs
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: dumprx-logs
+        path: ./dumper.log
