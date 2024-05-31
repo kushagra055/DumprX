@@ -1,0 +1,47 @@
+name: DumprX Automation
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  run-dumprx:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y wget aria2
+
+    - name: Run DumprX setup
+      run: chmod +x setup.sh && ./setup.sh
+
+    - name: Run DumprX
+      run: |
+        chmod +x dumper.sh
+        ./dumper.sh 'YOUR_FIRMWARE_URL_OR_PATH'
+      env:
+        GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+    - name: Create output repo
+      run: |
+        OUTPUT_REPO_NAME="dumprx-output-$(date +%Y%m%d%H%M%S)"
+        curl -H "Authorization: token ${{ secrets.PERSONAL_ACCESS_TOKEN }}" \
+             -d '{"name":"'$OUTPUT_REPO_NAME'"}' \
+             https://api.github.com/user/repos
+        git init
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git remote add origin https://github.com/${{ github.repository_owner }}/$OUTPUT_REPO_NAME.git
+        git add .
+        git commit -m "Add DumprX output"
+        git push -u origin main
